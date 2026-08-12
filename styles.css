@@ -97,6 +97,7 @@ input[type=number]:disabled { opacity: .5; }
 .row.check input { accent-color: var(--accent); }
 
 .actions { display: flex; gap: .75rem; }
+#go { flex: 1; }   /* full width on its own, sharing the row when Cancel shows */
 button, .button {
   font: inherit; font-weight: 600; padding: .65rem 1.1rem; border-radius: 8px;
   border: 1px solid var(--line); background: var(--panel); color: var(--ink);

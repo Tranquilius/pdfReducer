@@ -29,6 +29,7 @@ const el = {
   download: $('download'), warn: $('warn'),
   qualityDialog: $('qualityDialog'), qualityDpi: $('qualityDpi'),
   qualityConfirm: $('qualityConfirm'), qualityCancel: $('qualityCancel'),
+  qOriginal: $('qOriginal'), qReduced: $('qReduced'), qDelta: $('qDelta'), qSettled: $('qSettled'),
 };
 
 /** Below this, rasterised text starts to lose legibility no matter the mode. */
@@ -80,6 +81,7 @@ async function selectFile(file) {
   el.result.hidden = true;
   el.progressWrap.hidden = true;
   el.go.disabled = true;
+  setButtonMode('reduce');
 
   if (openDoc) { await openDoc.destroy().catch(() => {}); openDoc = null; }
   cancelled = false;
@@ -173,6 +175,7 @@ async function refreshEstimate() {
 }
 
 const scheduleEstimate = () => {
+  invalidateResult();
   if (!openDoc || running) return;
   // Mark stale immediately: during the debounce the displayed figure belongs to
   // the previous settings, and showing it as current would be a lie.
@@ -185,6 +188,9 @@ const scheduleEstimate = () => {
 
 for (const input of [el.dpi, el.quality]) input.addEventListener('input', scheduleEstimate);
 for (const input of [el.mode, el.maxDim]) input.addEventListener('change', scheduleEstimate);
+// These change the outcome but not the estimate, so they only invalidate.
+el.target.addEventListener('change', invalidateResult);
+el.targetSize.addEventListener('input', invalidateResult);
 
 el.cancel.addEventListener('click', () => {
   cancelled = true;
@@ -192,28 +198,48 @@ el.cancel.addEventListener('click', () => {
   el.status.textContent = 'Cancelling…';
 });
 
-el.go.addEventListener('click', () => { if (!running) run(); });
+/* ---------- primary button ---------- */
 
-/* ---------- low-resolution download warning ---------- */
+// One button carries the whole flow, so there is never a second control doing
+// the same job:
+//   reduce   — nothing rendered yet, or settings changed since the last run
+//   download — a result is ready and safe to take
+//   review   — a result is ready but was rendered below LOW_DPI
+let buttonMode = 'reduce';
 
-// Set when the delivered PDF was rendered below LOW_DPI, whether the user chose
-// that resolution or the size-target search settled on it. Cleared once
-// acknowledged, so confirming does not re-prompt for the same result.
-let warnBeforeDownload = false;
+const BUTTON_LABELS = {
+  reduce: 'Reduce PDF',
+  download: 'Download PDF',
+  review: 'Check quality & download',
+};
 
-el.download.addEventListener('click', (e) => {
-  if (!warnBeforeDownload) return;
-  e.preventDefault();
-  el.qualityDialog.showModal();
+function setButtonMode(mode) {
+  buttonMode = mode;
+  el.go.textContent = BUTTON_LABELS[mode];
+}
+
+el.go.addEventListener('click', () => {
+  if (running) return;
+  if (buttonMode === 'reduce') run();
+  else if (buttonMode === 'download') el.download.click();
+  else el.qualityDialog.showModal();
 });
 
 el.qualityConfirm.addEventListener('click', () => {
   el.qualityDialog.close();
-  warnBeforeDownload = false;
+  setButtonMode('download');   // acknowledged: the button now saves directly
   el.download.click();
 });
 
 el.qualityCancel.addEventListener('click', () => el.qualityDialog.close());
+
+// A result describes the settings it was made with, so any change makes it
+// stale — drop it rather than leaving a Download button over old numbers.
+function invalidateResult() {
+  if (buttonMode === 'reduce') return;
+  setButtonMode('reduce');
+  el.result.hidden = true;
+}
 
 /* ---------- main pipeline ---------- */
 
@@ -434,20 +460,33 @@ function showResult(blob, used, targetBytes) {
   const after = blob.size;
   const pct = ((after - before) / before) * 100;
 
-  el.sizeBefore.textContent = formatBytes(before);
-  el.sizeAfter.textContent = formatBytes(after);
-  el.sizeDelta.textContent = (pct <= 0 ? '−' : '+') + Math.abs(pct).toFixed(1) + '%';
+  const sizes = {
+    before: formatBytes(before),
+    after: formatBytes(after),
+    delta: (pct <= 0 ? '−' : '+') + Math.abs(pct).toFixed(1) + '%',
+  };
+  el.sizeBefore.textContent = sizes.before;
+  el.sizeAfter.textContent = sizes.after;
+  el.sizeDelta.textContent = sizes.delta;
 
   const modeLabel = el.mode.options[el.mode.selectedIndex].text;
-  el.settled.textContent = el.qualityRow.hidden
+  const settled = el.qualityRow.hidden
     ? `${modeLabel} · ${used.dpi} DPI`
     : `${modeLabel} · ${used.dpi} DPI · quality ${used.quality}`;
+  el.settled.textContent = settled;
 
   el.download.href = lastUrl;
   el.download.download = selectedFile.name.replace(/\.pdf$/i, '') + '-reduced.pdf';
 
-  warnBeforeDownload = used.dpi < LOW_DPI;
+  // Below LOW_DPI the dialog opens straight away and carries the outcome, the
+  // caveat and the download together, so the risk is seen before the file is
+  // taken rather than after.
+  const lowResolution = used.dpi < LOW_DPI;
   el.qualityDpi.textContent = `${used.dpi} DPI`;
+  el.qOriginal.textContent = sizes.before;
+  el.qReduced.textContent = sizes.after;
+  el.qDelta.textContent = sizes.delta;
+  el.qSettled.textContent = settled;
 
   let warning = null;
   if (targetBytes && after > targetBytes) {
@@ -460,6 +499,9 @@ function showResult(blob, used, targetBytes) {
   el.warn.textContent = warning ?? '';
   el.warn.hidden = !warning;
   el.result.hidden = false;
+
+  setButtonMode(lowResolution ? 'review' : 'download');
+  if (lowResolution) el.qualityDialog.showModal();
 }
 
 /* ---------- helpers ---------- */
