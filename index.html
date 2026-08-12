@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF Reducer</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%232563eb'/><path d='M11 8h7l4 4v12H11z' fill='%23fff'/><path d='M18 8v4h4' fill='%23bcd0f7'/><path d='M13.5 20.5l5-5M18.5 20.5l-5-5' stroke='%232563eb' stroke-width='1.6' stroke-linecap='round'/></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="app">
+  <header>
+    <h1>PDF Reducer</h1>
+    <p class="sub">Renders every page to a high-quality image, then rebuilds a smaller PDF. Everything runs in your browser — no upload.</p>
+  </header>
+
+  <section id="drop" class="drop" tabindex="0" role="button" aria-label="Choose a PDF file">
+    <input type="file" id="file" accept="application/pdf,.pdf" hidden>
+    <div class="drop-inner">
+      <strong>Drop a PDF here</strong>
+      <span>or click to choose a file</span>
+    </div>
+  </section>
+
+  <section id="fileinfo" class="fileinfo" hidden>
+    <span id="fileName"></span>
+    <span id="fileMeta" class="muted"></span>
+  </section>
+
+  <section class="controls">
+    <div class="row">
+      <label for="dpi">Resolution <span class="muted">(DPI)</span></label>
+      <div class="ctl">
+        <input type="range" id="dpi" min="72" max="400" step="1" value="150">
+        <output id="dpiOut">150</output>
+      </div>
+      <p class="hint">Higher = sharper text, bigger file. 150 suits screen reading, 200–300 for print.</p>
+    </div>
+
+    <div class="row">
+      <label for="quality">JPEG quality</label>
+      <div class="ctl">
+        <input type="range" id="quality" min="30" max="100" step="1" value="75">
+        <output id="qualityOut">75</output>
+      </div>
+      <p class="hint">75 is a good balance. Ignored when the format is PNG.</p>
+    </div>
+
+    <div class="row">
+      <label for="format">Image format</label>
+      <div class="ctl">
+        <select id="format">
+          <option value="image/jpeg" selected>JPEG (smallest)</option>
+          <option value="image/png">PNG (lossless, largest)</option>
+        </select>
+      </div>
+      <p class="hint">JPEG is the safest choice for compatibility.</p>
+    </div>
+
+    <div class="row">
+      <label for="maxDim">Max page pixels</label>
+      <div class="ctl">
+        <select id="maxDim">
+          <option value="4000">4000 px</option>
+          <option value="6000" selected>6000 px</option>
+          <option value="8000">8000 px</option>
+          <option value="12000">12000 px</option>
+        </select>
+      </div>
+      <p class="hint">Safety cap on the long edge of each rendered page, so huge pages don't blow up memory.</p>
+    </div>
+
+    <div class="row check">
+      <label><input type="checkbox" id="grayscale"> Convert to grayscale</label>
+      <p class="hint">Often shrinks scanned documents noticeably.</p>
+    </div>
+  </section>
+
+  <section class="actions">
+    <button id="go" class="primary" disabled>Reduce PDF</button>
+    <button id="cancel" hidden>Cancel</button>
+  </section>
+
+  <section id="progressWrap" class="progress" hidden>
+    <div class="bar"><div id="bar"></div></div>
+    <p id="status" class="muted"></p>
+  </section>
+
+  <section id="result" class="result" hidden>
+    <div class="stats">
+      <div><span class="muted">Original</span><strong id="sizeBefore"></strong></div>
+      <div><span class="muted">Reduced</span><strong id="sizeAfter"></strong></div>
+      <div><span class="muted">Change</span><strong id="sizeDelta"></strong></div>
+    </div>
+    <a id="download" class="primary button" download>Download PDF</a>
+    <p id="warn" class="warn" hidden></p>
+  </section>
+
+  <p class="note">Note: the output is made of page images, so the text is no longer selectable or searchable.</p>
+</main>
+<script src="vendor/jspdf/jspdf.umd.min.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

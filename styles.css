@@ -1,0 +1,121 @@
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --ink: #14161a;
+  --muted: #6b7280;
+  --line: #e3e6ea;
+  --accent: #2563eb;
+  --accent-ink: #ffffff;
+  --warn: #92400e;
+  --warn-bg: #fef3c7;
+  --radius: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --ink: #e8eaed;
+    --muted: #9aa1ac;
+    --line: #2a2f3a;
+    --accent: #3b82f6;
+    --warn: #fde68a;
+    --warn-bg: #3f2d0a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+/* Rules below set `display` on these elements, which would otherwise beat the
+   browser's default [hidden] styling. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  padding: 2rem 1rem 4rem;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.app { max-width: 640px; margin: 0 auto; display: grid; gap: 1.25rem; }
+
+h1 { margin: 0 0 .25rem; font-size: 1.6rem; letter-spacing: -.02em; }
+.sub { margin: 0; color: var(--muted); }
+.muted { color: var(--muted); }
+.hint { margin: .35rem 0 0; font-size: .82rem; color: var(--muted); }
+
+.drop {
+  border: 2px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 2.25rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.drop:hover, .drop:focus-visible, .drop.over { border-color: var(--accent); outline: none; }
+.drop.over { background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+.drop-inner { display: grid; gap: .25rem; }
+.drop-inner span { color: var(--muted); font-size: .9rem; }
+
+.fileinfo {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: .75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.fileinfo span:first-child { font-weight: 600; word-break: break-all; }
+
+.controls {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  display: grid;
+  gap: 1.1rem;
+}
+.row > label { font-weight: 600; display: block; margin-bottom: .4rem; }
+.ctl { display: flex; align-items: center; gap: .75rem; }
+.ctl input[type=range] { flex: 1; accent-color: var(--accent); }
+.ctl output {
+  min-width: 3.2rem; text-align: right; font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+select {
+  font: inherit; padding: .4rem .6rem; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+}
+.row.check label { font-weight: 500; display: flex; gap: .5rem; align-items: center; }
+.row.check input { accent-color: var(--accent); }
+
+.actions { display: flex; gap: .75rem; }
+button, .button {
+  font: inherit; font-weight: 600; padding: .65rem 1.1rem; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  cursor: pointer; text-decoration: none; display: inline-block;
+}
+button:disabled { opacity: .5; cursor: not-allowed; }
+.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+
+.progress { display: grid; gap: .5rem; }
+.bar { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.bar > div { height: 100%; width: 0; background: var(--accent); transition: width .15s; }
+
+.result {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1rem 1.25rem; display: grid; gap: 1rem;
+}
+.stats { display: flex; gap: 2rem; flex-wrap: wrap; }
+.stats div { display: grid; gap: .1rem; }
+.stats strong { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.result .button { justify-self: start; }
+.warn {
+  margin: 0; padding: .6rem .8rem; border-radius: 8px;
+  background: var(--warn-bg); color: var(--warn); font-size: .88rem;
+}
+.note { margin: 0; font-size: .82rem; color: var(--muted); text-align: center; }
