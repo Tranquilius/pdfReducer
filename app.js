@@ -27,7 +27,12 @@ const el = {
   result: $('result'), sizeBefore: $('sizeBefore'), sizeAfter: $('sizeAfter'),
   sizeDelta: $('sizeDelta'), settled: $('settled'),
   download: $('download'), warn: $('warn'),
+  qualityDialog: $('qualityDialog'), qualityDpi: $('qualityDpi'),
+  qualityConfirm: $('qualityConfirm'), qualityCancel: $('qualityCancel'),
 };
+
+/** Below this, rasterised text starts to lose legibility no matter the mode. */
+const LOW_DPI = 100;
 
 const MODE_HINTS = {
   bw: 'Best for scanned text. Stores each page as 1 bit per pixel — typically 10–40× smaller than a photo of the same page. Colour and shading are discarded.',
@@ -188,6 +193,27 @@ el.cancel.addEventListener('click', () => {
 });
 
 el.go.addEventListener('click', () => { if (!running) run(); });
+
+/* ---------- low-resolution download warning ---------- */
+
+// Set when the delivered PDF was rendered below LOW_DPI, whether the user chose
+// that resolution or the size-target search settled on it. Cleared once
+// acknowledged, so confirming does not re-prompt for the same result.
+let warnBeforeDownload = false;
+
+el.download.addEventListener('click', (e) => {
+  if (!warnBeforeDownload) return;
+  e.preventDefault();
+  el.qualityDialog.showModal();
+});
+
+el.qualityConfirm.addEventListener('click', () => {
+  el.qualityDialog.close();
+  warnBeforeDownload = false;
+  el.download.click();
+});
+
+el.qualityCancel.addEventListener('click', () => el.qualityDialog.close());
 
 /* ---------- main pipeline ---------- */
 
@@ -419,6 +445,9 @@ function showResult(blob, used, targetBytes) {
 
   el.download.href = lastUrl;
   el.download.download = selectedFile.name.replace(/\.pdf$/i, '') + '-reduced.pdf';
+
+  warnBeforeDownload = used.dpi < LOW_DPI;
+  el.qualityDpi.textContent = `${used.dpi} DPI`;
 
   let warning = null;
   if (targetBytes && after > targetBytes) {

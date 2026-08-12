@@ -111,6 +111,22 @@
 
   <p class="note">Note: the output is made of page images, so the text is no longer selectable or searchable.</p>
 </main>
+
+<dialog id="qualityDialog" aria-labelledby="qualityTitle">
+  <h2 id="qualityTitle">Check this one before you rely on it</h2>
+  <p>
+    This PDF was rendered at <strong id="qualityDpi"></strong>, below the 100 DPI
+    mark. Every page is an image at that resolution, so small print, footnotes
+    and thin diagram lines may have become blurred or unreadable — and no
+    setting here can recover detail once it is gone.
+  </p>
+  <p>Open the file and read a few pages at full zoom before deleting the original.</p>
+  <div class="dialog-actions">
+    <button id="qualityCancel" type="button">Go back</button>
+    <button id="qualityConfirm" type="button" class="primary">Download anyway</button>
+  </div>
+</dialog>
+
 <script type="module" src="app.js"></script>
 </body>
 </html>

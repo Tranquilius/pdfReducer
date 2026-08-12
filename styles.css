@@ -131,3 +131,16 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   background: var(--warn-bg); color: var(--warn); font-size: .88rem;
 }
 .note { margin: 0; font-size: .82rem; color: var(--muted); text-align: center; }
+
+/* Only style the open state: a bare `dialog` rule would override the browser's
+   default of hiding it while closed. */
+dialog {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel); color: var(--ink);
+  padding: 1.5rem; max-width: 30rem; width: calc(100% - 2rem);
+}
+dialog[open] { display: grid; gap: .9rem; }
+dialog::backdrop { background: rgb(0 0 0 / .45); }
+dialog h2 { margin: 0; font-size: 1.15rem; letter-spacing: -.01em; }
+dialog p { margin: 0; font-size: .92rem; }
+.dialog-actions { display: flex; gap: .6rem; justify-content: flex-end; flex-wrap: wrap; margin-top: .3rem; }

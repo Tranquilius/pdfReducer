@@ -100,6 +100,11 @@ with a single corrective pass if the estimate landed just over.
 - **Text stops being text.** The result is page images, so selection, search,
   copy/paste, links, and accessibility tags are gone. That is inherent to this
   approach, not a bug.
+- **Below 100 DPI, legibility is at risk.** Small print, footnotes and thin
+  diagram lines can blur past reading. Downloading such a file prompts you to
+  check it first — the prompt fires whether you chose that resolution yourself
+  or the size target settled on it, since a tight budget can drive the search
+  well below 100 DPI on its own.
 - **It doesn't always shrink.** A PDF that is already mostly compressed images,
   or one that is pure vector text, can come out *larger*. The app tells you when
   that happens — lower the DPI or keep the original.
