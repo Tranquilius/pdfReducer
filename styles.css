@@ -86,10 +86,13 @@ h1 { margin: 0 0 .25rem; font-size: 1.6rem; letter-spacing: -.02em; }
   min-width: 3.2rem; text-align: right; font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
-select {
+select, input[type=number] {
   font: inherit; padding: .4rem .6rem; border-radius: 8px;
   border: 1px solid var(--line); background: var(--bg); color: var(--ink);
 }
+input[type=number] { width: 5.5rem; }
+input[type=number]:disabled { opacity: .5; }
+.settled { margin: 0; font-size: .85rem; }
 .row.check label { font-weight: 500; display: flex; gap: .5rem; align-items: center; }
 .row.check input { accent-color: var(--accent); }
 

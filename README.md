@@ -38,14 +38,43 @@ from the filesystem will not work.
 
 | Control | What it does |
 | --- | --- |
-| **Resolution (DPI)** | Render scale for each page. 150 is comfortable on screen, 200–300 for print. This is the main size/quality lever. |
-| **JPEG quality** | Encoder quality, 30–100. 75 is a good default; below ~60 artefacts get visible on text. |
-| **Image format** | JPEG for the smallest files, PNG when you need lossless output (much larger). |
+| **Mode** | The biggest lever by far — see below. |
+| **Resolution (DPI)** | Render scale for each page. Black & white wants 200–300 to keep letterforms clean; 120–150 is plenty for the other modes. |
+| **JPEG quality** | Encoder quality, 10–100, for the colour and grayscale modes. Below about 40, artefacts get visible on text. |
 | **Max page pixels** | Hard cap on the long edge of a rendered page, so an oversized page can't exhaust memory. Lowers the effective DPI for such pages. |
-| **Grayscale** | Drops colour before encoding. Usually a solid win on scanned documents. |
+| **Shrink until under** | Give a size budget and it finds settings that fit, then renders once. |
+
+### Modes
+
+- **Black & white** — stores pages as 1 bit per pixel behind FlateDecode. On
+  scanned text this is 10–40× smaller than a photograph of the same page, and
+  it removes scanner grain and grey cast as a side effect. Thresholding is
+  adaptive (Bradley–Roth), so uneven page lighting does not black out one side.
+  Colour and shading are discarded.
+- **Grayscale** — drops colour, keeps shading. For scans containing photos.
+- **Colour** — full-colour JPEG.
+- **Lossless** — no quality loss at the chosen resolution, and much larger
+  files. Rarely worth it.
+
+Measured on a 7.8 MB, 4-page 300 DPI scan:
+
+| Mode | Setting | Output | Shrink |
+| --- | --- | --- | --- |
+| Black & white | 200 DPI | 188 KB | 43× |
+| Black & white | 300 DPI | 391 KB | 20× |
+| Grayscale | 150 DPI, q70 | 963 KB | 8× |
+| Colour | 150 DPI, q40 | 532 KB | 15× |
 
 The output keeps each page's original physical dimensions (in points), so
 printing and page count are unchanged.
+
+### How the size target works
+
+Re-rendering a whole document per guess is slow, so the search prices one or two
+sample pages, extrapolates, and binary-searches the quality scale for the best
+fit — dropping resolution only when the quality floor still will not fit, since
+resolution hurts legibility faster. It then renders once at the chosen settings,
+with a single corrective pass if the estimate landed just over.
 
 ## Trade-offs
 
@@ -62,17 +91,23 @@ printing and page count are unchanged.
 
 ```
 index.html            markup and controls
-app.js                render → encode → rebuild pipeline
+app.js                pipeline: render → encode → rebuild, and the size search
+pdfwriter.js          minimal PDF writer (DCTDecode / FlateDecode image pages)
+imaging.js            grayscale, adaptive thresholding, pixel packing
 styles.css            styling (light and dark)
 serve.sh              local static server (development only)
 .nojekyll             stops Pages running the files through Jekyll
 vendor/pdfjs/         pdf.js 4.10.38 (legacy build, worker, cmaps, standard fonts)
-vendor/jspdf/         jsPDF 2.5.2 (UMD build)
 ```
 
-Vendored libraries keep the app self-contained — no CDN, no third-party requests
-at runtime. Both are Apache-2.0 / MIT licensed; their licence files sit next to
-them.
+`pdfwriter.js` exists instead of a general PDF library because the compression
+wins live at the PDF level: a bilevel scan needs to be 1-bit data behind
+FlateDecode, and the image APIs of general libraries only accept JPEG or PNG.
+Writing the ~150 lines directly also dropped a 357 KB dependency.
+
+pdf.js is vendored so the app is self-contained — no CDN, no third-party
+requests at runtime. It is Apache-2.0 licensed; the licence file sits next to
+it.
 
 pdf.js ships its builds as `.mjs`, but they are renamed to `.js` here: GitHub
 Pages has been known to serve `.mjs` as `application/octet-stream`, which
