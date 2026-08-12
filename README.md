@@ -44,6 +44,13 @@ from the filesystem will not work.
 | **Max page pixels** | Hard cap on the long edge of a rendered page, so an oversized page can't exhaust memory. Lowers the effective DPI for such pages. |
 | **Shrink until under** | Give a size budget and it finds settings that fit, then renders once. |
 
+Below the controls, an **estimated output size** updates as you move the
+resolution slider or change mode, so you can find the size/quality balance
+before committing to a full render. It renders two sample pages and scales by
+the page count — expect it to land within roughly 15% of the real figure, and to
+err on the high side. Documents whose pages differ a lot will estimate less
+precisely.
+
 ### Modes
 
 - **Black & white** — stores pages as 1 bit per pixel behind FlateDecode. On

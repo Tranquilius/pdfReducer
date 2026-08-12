@@ -21,6 +21,7 @@ const el = {
   quality: $('quality'), qualityOut: $('qualityOut'), qualityRow: $('qualityRow'),
   maxDim: $('maxDim'),
   target: $('target'), targetSize: $('targetSize'),
+  estimateRow: $('estimateRow'), estimate: $('estimate'), estimateNote: $('estimateNote'),
   go: $('go'), cancel: $('cancel'),
   progressWrap: $('progressWrap'), bar: $('bar'), status: $('status'),
   result: $('result'), sizeBefore: $('sizeBefore'), sizeAfter: $('sizeAfter'),
@@ -36,6 +37,7 @@ const MODE_HINTS = {
 };
 
 let selectedFile = null;
+let openDoc = null;        // kept open so the live estimate can sample pages cheaply
 let lastUrl = null;
 let cancelled = false;
 let running = false;
@@ -61,7 +63,7 @@ el.drop.addEventListener('drop', (e) => {
   if (f) selectFile(f);
 });
 
-function selectFile(file) {
+async function selectFile(file) {
   if (file.type && file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
     alert('That does not look like a PDF.');
     return;
@@ -70,9 +72,26 @@ function selectFile(file) {
   el.fileName.textContent = file.name;
   el.fileMeta.textContent = formatBytes(file.size);
   el.fileinfo.hidden = false;
-  el.go.disabled = false;
   el.result.hidden = true;
   el.progressWrap.hidden = true;
+  el.go.disabled = true;
+
+  if (openDoc) { await openDoc.destroy().catch(() => {}); openDoc = null; }
+  cancelled = false;
+
+  try {
+    openDoc = await openPdf(new Uint8Array(await file.arrayBuffer()));
+    el.fileMeta.textContent = `${formatBytes(file.size)} · ${openDoc.numPages} page${openDoc.numPages === 1 ? '' : 's'}`;
+    el.go.disabled = false;
+    el.estimateRow.hidden = false;
+    refreshEstimate();
+  } catch (err) {
+    el.estimateRow.hidden = true;
+    if (!cancelled) {
+      console.error(err);
+      el.fileMeta.textContent = `${formatBytes(file.size)} · could not be opened`;
+    }
+  }
 }
 
 /* ---------- controls ---------- */
@@ -97,6 +116,71 @@ const refreshTarget = () => { el.targetSize.disabled = !el.target.checked; };
 el.target.addEventListener('change', refreshTarget);
 refreshTarget();
 
+function currentSettings() {
+  return {
+    dpi: Number(el.dpi.value),
+    quality: Number(el.quality.value),
+    mode: el.mode.value,
+    maxDim: Number(el.maxDim.value),
+  };
+}
+
+/* ---------- live size estimate ---------- */
+
+let estimateSeq = 0;
+let estimateTask = null;   // in-flight pdf.js render, cancelled when superseded
+let estimateTimer = null;
+
+/**
+ * Prices one sample page at the current settings and scales it by the page
+ * count. Dragging the slider fires continuously, so this is debounced and the
+ * superseded render is cancelled rather than left to finish unwanted.
+ */
+async function refreshEstimate() {
+  if (!openDoc || running) return;
+  const seq = ++estimateSeq;
+
+  try { estimateTask?.cancel(); } catch { /* already settled */ }
+  el.estimateRow.classList.add('busy');
+  el.estimateNote.textContent = 'estimating…';
+
+  const settings = currentSettings();
+  try {
+    // Two samples on anything longer than a couple of pages: one page is a
+    // noisy predictor of the whole document, and the second roughly halves the
+    // error for one extra page render.
+    const samples = samplePages(openDoc, openDoc.numPages >= 3 ? 2 : 1);
+    const bytes = await estimateSize(openDoc, settings, samples, (task) => { estimateTask = task; });
+    if (seq !== estimateSeq) return;
+
+    el.estimate.textContent = `≈ ${formatBytes(bytes)}`;
+    const delta = bytes / selectedFile.size;
+    el.estimateNote.textContent =
+      `${delta < 1 ? `${(1 / delta).toFixed(1)}× smaller` : `${delta.toFixed(1)}× larger`} · ` +
+      `from ${samples.length} sampled page${samples.length === 1 ? '' : 's'}`;
+  } catch (err) {
+    if (seq !== estimateSeq) return;   // cancelled by a newer request; ignore
+    el.estimate.textContent = '—';
+    el.estimateNote.textContent = 'could not estimate';
+  } finally {
+    if (seq === estimateSeq) el.estimateRow.classList.remove('busy');
+  }
+}
+
+const scheduleEstimate = () => {
+  if (!openDoc || running) return;
+  // Mark stale immediately: during the debounce the displayed figure belongs to
+  // the previous settings, and showing it as current would be a lie.
+  estimateSeq++;
+  el.estimateRow.classList.add('busy');
+  el.estimateNote.textContent = 'estimating…';
+  clearTimeout(estimateTimer);
+  estimateTimer = setTimeout(refreshEstimate, 220);
+};
+
+for (const input of [el.dpi, el.quality]) input.addEventListener('input', scheduleEstimate);
+for (const input of [el.mode, el.maxDim]) input.addEventListener('change', scheduleEstimate);
+
 el.cancel.addEventListener('click', () => {
   cancelled = true;
   el.cancel.disabled = true;
@@ -115,19 +199,20 @@ async function run() {
   el.cancel.disabled = false;
   el.result.hidden = true;
   el.progressWrap.hidden = false;
-  setProgress(0, 'Reading file…');
+  setProgress(0, 'Starting…');
 
   const mode = el.mode.value;
-  const maxDim = Number(el.maxDim.value);
   const targetBytes = el.target.checked ? Number(el.targetSize.value) * 1024 * 1024 : null;
 
-  let pdf = null;
   try {
-    const data = new Uint8Array(await selectedFile.arrayBuffer());
-    pdf = await openPdf(data);
-    if (cancelled) { setProgress(0, 'Cancelled.'); return; }
+    // Invalidate any pending estimate so its result cannot paint over the run.
+    estimateSeq++;
+    clearTimeout(estimateTimer);
+    try { estimateTask?.cancel(); } catch { /* already settled */ }
+    const pdf = openDoc;
+    if (!pdf) throw new Error('No PDF is open.');
 
-    let settings = { dpi: Number(el.dpi.value), quality: Number(el.quality.value), mode, maxDim };
+    let settings = currentSettings();
     if (targetBytes) settings = await chooseSettings(pdf, settings, targetBytes);
     if (cancelled) { setProgress(0, 'Cancelled.'); return; }
 
@@ -156,10 +241,10 @@ async function run() {
       setProgress(0, `Failed: ${err?.message || err}`);
     }
   } finally {
-    if (pdf) await pdf.destroy().catch(() => {});
     running = false;
     el.go.disabled = false;
     el.cancel.hidden = true;
+    refreshEstimate();
   }
 }
 
@@ -184,20 +269,9 @@ function openPdf(data) {
  * lowest quality still cannot fit does it step the resolution down.
  */
 async function chooseSettings(pdf, base, targetBytes) {
-  const total = pdf.numPages;
-  const samples = total <= 2 ? [1] : [1, Math.ceil(total / 2)];
+  const samples = samplePages(pdf, 2);
   const budget = targetBytes * 0.92;   // headroom for page objects and variance
-
-  const estimate = async (settings) => {
-    let sum = 0;
-    for (const n of samples) {
-      if (cancelled) return Infinity;
-      const { image } = await renderOnePage(pdf, n, settings);
-      const { data } = await encodeImage(image);
-      sum += data.length + 400;
-    }
-    return (sum / samples.length) * total;
-  };
+  const estimate = (settings) => (cancelled ? Infinity : estimateSize(pdf, settings, samples));
 
   const qualityFixed = base.mode === 'bw' || base.mode === 'lossless';
   const dpiSteps = [1, 0.85, 0.7, 0.55, 0.42, 0.3];
@@ -230,7 +304,26 @@ async function chooseSettings(pdf, base, targetBytes) {
   return { ...base, dpi: Math.max(50, Math.round(base.dpi * 0.3)), quality: qualityFixed ? base.quality : 12 };
 }
 
-async function renderOnePage(pdf, n, { dpi, quality, mode, maxDim }, canvas = document.createElement('canvas')) {
+/** Evenly spaced page numbers to sample; a middle page beats a cover page. */
+function samplePages(pdf, count) {
+  const total = pdf.numPages;
+  const k = Math.min(count, total);
+  if (k === 1) return [Math.ceil(total / 2)];
+  return Array.from({ length: k }, (_, i) => Math.max(1, Math.min(total, Math.round(((i + 0.5) * total) / k))));
+}
+
+/** Extrapolates whole-document size from sample pages, in final compressed bytes. */
+async function estimateSize(pdf, settings, samples, onRenderTask) {
+  let sum = 0;
+  for (const n of samples) {
+    const { image } = await renderOnePage(pdf, n, settings, undefined, onRenderTask);
+    const { data } = await encodeImage(image);
+    sum += data.length + 400;   // page, content and image dictionaries
+  }
+  return (sum / samples.length) * pdf.numPages + 300;
+}
+
+async function renderOnePage(pdf, n, { dpi, quality, mode, maxDim }, canvas = document.createElement('canvas'), onRenderTask) {
   const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: mode !== 'color' });
   const page = await pdf.getPage(n);
   const base = page.getViewport({ scale: 1 });          // page size in PDF points
@@ -244,7 +337,9 @@ async function renderOnePage(pdf, n, { dpi, quality, mode, maxDim }, canvas = do
   // JPEG has no alpha channel, so transparent areas would turn black.
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  await page.render({ canvasContext: ctx, viewport, background: '#ffffff' }).promise;
+  const task = page.render({ canvasContext: ctx, viewport, background: '#ffffff' });
+  onRenderTask?.(task);
+  await task.promise;
   page.cleanup();
 
   return { base, image: await encodePage(canvas, ctx, mode, quality) };

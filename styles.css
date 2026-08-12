@@ -105,6 +105,15 @@ button, .button {
 button:disabled { opacity: .5; cursor: not-allowed; }
 .primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 
+.estimate {
+  display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: .7rem 1.25rem;
+}
+.estimate strong { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.estimate.busy strong { opacity: .45; }
+.estimate #estimateNote { font-size: .82rem; }
+
 .progress { display: grid; gap: .5rem; }
 .bar { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
 .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .15s; }
