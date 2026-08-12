@@ -6,21 +6,33 @@ choose and rebuilds those images into a new, usually much smaller PDF.
 Everything happens in the browser — the file never leaves your machine, and
 there is no build step or backend.
 
-## Deploy to GitHub Pages
+## Live
 
-There is nothing to build. Push the repo and point Pages at the branch:
+**https://tranquilius.github.io/pdfReducer/**
+
+Note the capital **R** — GitHub Pages paths are case-sensitive, so
+`/pdfreducer` will not resolve.
+
+## Deploy
+
+There is nothing to build; Pages serves the repo exactly as committed, from
+`main` at the root. Pushing to `main` republishes:
 
 ```sh
-git remote add origin git@github.com:<you>/pdfReducer.git
-git push -u origin main
+git push
 ```
-
-Then **Settings → Pages → Source: Deploy from a branch → `main` / `/ (root)`**.
-The app appears at `https://<you>.github.io/pdfReducer/`.
 
 Every path in the app is relative, so it works both at a domain root and under a
 repo subpath. `.nojekyll` is committed so Pages copies `vendor/` through
-untouched.
+untouched, and the pdf.js builds are renamed from `.mjs` to `.js` so they are
+served with a JavaScript MIME type that browsers accept for ES modules.
+
+To publish a fork of this elsewhere:
+
+```sh
+gh repo create <name> --public --source=. --remote=origin --push
+gh api -X POST repos/<you>/<name>/pages -f 'source[branch]=main' -f 'source[path]=/'
+```
 
 ## Run it locally
 
