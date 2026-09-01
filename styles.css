@@ -145,3 +145,88 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 dialog h2 { margin: 0; font-size: 1.15rem; letter-spacing: -.01em; }
 dialog p { margin: 0; font-size: .92rem; }
 .dialog-actions { display: flex; gap: .6rem; justify-content: flex-end; flex-wrap: wrap; margin-top: .3rem; }
+
+.kofi-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 2.5rem;
+}
+
+.kofi-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff5e0;
+  text-decoration: none;
+  background: linear-gradient(100deg, #ff5f6d, #ffc371, #ff5f6d);
+  background-size: 220% auto;
+  box-shadow: 0 4px 18px rgba(255, 95, 109, 0.45);
+  overflow: hidden;
+  animation:
+    kofi-gradient 4s ease-in-out infinite,
+    kofi-pulse 2.4s ease-in-out infinite;
+  transition: transform 0.15s ease;
+}
+
+.kofi-button:hover {
+  transform: translateY(-2px) scale(1.03);
+}
+
+.kofi-button::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  transform: skewX(-20deg);
+  animation: kofi-shine 2.8s ease-in-out infinite;
+}
+
+.kofi-button-icon {
+  font-size: 1.1rem;
+}
+
+@keyframes kofi-gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes kofi-pulse {
+  0%,
+  100% {
+    box-shadow: 0 4px 18px rgba(255, 95, 109, 0.45);
+  }
+  50% {
+    box-shadow: 0 4px 26px rgba(255, 195, 113, 0.65);
+  }
+}
+
+@keyframes kofi-shine {
+  0% {
+    left: -60%;
+  }
+  100% {
+    left: 130%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kofi-button,
+  .kofi-button::after {
+    animation: none;
+  }
+}

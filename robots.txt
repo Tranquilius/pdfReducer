@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tranquilius.github.io/pdfReducer/sitemap.xml
